@@ -70,10 +70,14 @@ export default class OptionManager {
     plugin: Plugin;
   }>;
 
-  static memoisePluginContainer(fn, loc, i, alias) {
-    for (let cache of (OptionManager.memoisedPlugins: Array<Object>)) {
-      if (cache.container === fn) return cache.plugin;
+  static memoisePluginContainer(fn, loc, i, alias, useCache) {
+    if (useCache) {
+      for (let cache of (OptionManager.memoisedPlugins: Array < Object > ))
+      {
+        if (cache.container === fn) return cache.plugin;
+      }
     }
+  
 
     let obj: ?PluginObject;
 
@@ -85,10 +89,12 @@ export default class OptionManager {
 
     if (typeof obj === "object") {
       let plugin = new Plugin(obj, alias);
-      OptionManager.memoisedPlugins.push({
-        container: fn,
-        plugin: plugin
-      });
+      if (useCache) {
+        OptionManager.memoisedPlugins.push({
+          container: fn,
+          plugin: plugin
+        });
+      }
       return plugin;
     } else {
       throw new TypeError(messages.get("pluginNotObject", loc, i, typeof obj) + loc + i);
@@ -106,13 +112,13 @@ export default class OptionManager {
     return opts;
   }
 
-  static normalisePlugin(plugin, loc, i, alias) {
+  static normalisePlugin(plugin, loc, i, alias, options) {
     plugin = plugin.__esModule ? plugin.default : plugin;
 
     if (!(plugin instanceof Plugin)) {
       // allow plugin containers to be specified so they don't have to manually require
       if (typeof plugin === "function" || typeof plugin === "object") {
-        plugin = OptionManager.memoisePluginContainer(plugin, loc, i, alias);
+        plugin = OptionManager.memoisePluginContainer(plugin, loc, i, alias, options.cache);
       } else {
         throw new TypeError(messages.get("pluginNotFunction", loc, i, typeof plugin));
       }
@@ -150,7 +156,7 @@ export default class OptionManager {
         }
       }
 
-      plugin = OptionManager.normalisePlugin(plugin, loc, i, alias);
+      plugin = OptionManager.normalisePlugin(plugin, loc, i, alias, options || {});
 
       return [plugin, options];
     });
